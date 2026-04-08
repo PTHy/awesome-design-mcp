@@ -1,6 +1,5 @@
 const REPO = 'PTHy/awesome-design-md';
 const BASE_RAW = `https://raw.githubusercontent.com/${REPO}/main`;
-const BASE_API = `https://api.github.com/repos/${REPO}`;
 
 const LIST_TTL = 60 * 60 * 1000; // 1시간
 const MD_TTL = 30 * 60 * 1000; // 30분
@@ -26,33 +25,15 @@ class Cache<T> {
 export class GitHubClient {
   private listCache = new Cache<string[]>();
   private mdCache = new Cache<string>();
-  private token: string | undefined;
-
-  constructor() {
-    this.token = process.env.GITHUB_TOKEN;
-  }
-
-  private get headers(): Record<string, string> {
-    const h: Record<string, string> = { 'User-Agent': 'awesome-design-mcp/1.0' };
-    if (this.token) h['Authorization'] = `Bearer ${this.token}`;
-    return h;
-  }
 
   async listDesigns(): Promise<string[]> {
     const cached = this.listCache.get('designs');
     if (cached) return cached;
 
-    const res = await fetch(`${BASE_API}/contents/design-md`, {
-      headers: this.headers,
-    });
-    if (!res.ok) throw new Error(`GitHub API error: ${res.status} ${res.statusText}`);
+    const res = await fetch(`${BASE_RAW}/design-md/index.json`);
+    if (!res.ok) throw new Error(`Failed to fetch index.json (${res.status})`);
 
-    const items = (await res.json()) as Array<{ name: string; type: string }>;
-    const names = items
-      .filter((i) => i.type === 'dir')
-      .map((i) => i.name)
-      .sort();
-
+    const names = (await res.json()) as string[];
     this.listCache.set('designs', names, LIST_TTL);
     return names;
   }
